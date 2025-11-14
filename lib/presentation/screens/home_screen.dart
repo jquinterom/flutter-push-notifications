@@ -33,7 +33,7 @@ class _HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: 10,
+      itemCount: 0,
       itemBuilder: (context, index) {
         return ListTile(
           title: Text('Item $index'),
