@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:push_app/presentation/blocs/notifications/notifications_bloc.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -32,12 +33,24 @@ class _HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final notifications = context
+        .watch<NotificationsBloc>()
+        .state
+        .notifications;
+
     return ListView.builder(
-      itemCount: 0,
+      itemCount: notifications.length,
       itemBuilder: (context, index) {
+        final notification = notifications[index];
         return ListTile(
-          title: Text('Item $index'),
-          subtitle: Text('Item $index'),
+          title: Text(notification.title),
+          subtitle: Text(notification.body),
+          leading: notification.imageUrl != null
+              ? Image.network(notification.imageUrl!, width: 50, height: 50)
+              : null,
+          onTap: () {
+            context.push('/push-details/${notification.messageId}');
+          },
         );
       },
     );

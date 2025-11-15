@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:push_app/domain/entities/push_message.dart';
 import 'package:push_app/firebase_options.dart';
 
 part 'notifications_event.dart';
@@ -20,6 +23,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
 
   NotificationsBloc() : super(const NotificationsState()) {
     on<NotificationsStatusChanged>(_notificationsStatusChanged);
+    on<NotificationReceived>(_onPushMessageReceived);
 
     _initialStatusCheck();
 
@@ -55,6 +59,15 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     _getFCMToken();
   }
 
+  void _onPushMessageReceived(
+    NotificationReceived event,
+    Emitter<NotificationsState> emit,
+  ) {
+    emit(
+      state.copyWith(notifications: [event.message, ...state.notifications]),
+    );
+  }
+
   void _initialStatusCheck() async {
     final settings = await messaging.getNotificationSettings();
     add(NotificationsStatusChanged(settings.authorizationStatus));
@@ -70,13 +83,36 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   }
 
   void _handleRemoteMessage(RemoteMessage message) {
-    debugPrint('Remote message: ${message.data.toString()}');
-
     if (message.notification == null) return;
-    debugPrint('Notification data: ${message.notification}');
+
+    final notification = PushMessage(
+      messageId:
+          message.messageId?.replaceAll(":", "").replaceAll("%", "") ?? '',
+      title: message.notification!.title ?? '',
+      body: message.notification!.body ?? '',
+      sentTime: message.sentTime ?? DateTime.now(),
+      data: message.data,
+      imageUrl: Platform.isAndroid
+          ? message.notification!.android?.imageUrl
+          : message.notification!.apple?.imageUrl,
+    );
+
+    add(NotificationReceived(notification));
   }
 
   void _onForegroundMessage() {
     FirebaseMessaging.onMessage.listen(_handleRemoteMessage);
+  }
+
+  PushMessage? getPushMessage(String messageId) {
+    final exists = state.notifications.any(
+      (element) => element.messageId == messageId,
+    );
+
+    if (!exists) return null;
+
+    return state.notifications.firstWhere(
+      (element) => element.messageId == messageId,
+    );
   }
 }
